@@ -1,0 +1,655 @@
+<!--
+TODO (оплата):
+- Підключити реальний провайдер: LiqPay/Mono/Apple Pay/Google Pay.
+- На кнопках "Купити курс"/"У кошик" відправляти події аналітики (GA4) та ініціювати checkout.
+- Обробити стани: створення інвойсу, редирект, успіх/помилка.
+-->
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>ШІ Для Чайників і не тільки — курси, продукти та гайд</title>
+  <meta name="description" content="Прості та практичні курси з ШІ: промпти, зображення, автоматизації без коду, таблиці + AI. Передпродаж зі знижкою. Telegram‑спільнота та підтримка." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="ШІ Для Чайників і не тільки — курси з ШІ" />
+  <meta property="og:description" content="Курси, цифрові продукти та безкоштовний гайд: ChatGPT, автоматизації, зображення для SMM, таблиці + AI." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://example.com/" />
+  <meta property="og:image" content="https://example.com/og-image.jpg" />
+  <meta property="og:locale" content="uk_UA" />
+  <meta property="og:locale:alternate" content="ru_RU" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#0F172A;        /* base slate-900 */
+      --muted:#64748B;       /* slate-500 */
+      --surface:#F8FAFC;     /* slate-50 */
+      --border:#E2E8F0;      /* slate-200 */
+      --accent:#22C55E;      /* green-500 */
+      --accent2:#38BDF8;     /* sky-400 */
+      --ring:#93C5FD;        /* sky-300 */
+      --radius:14px;
+      --shadow:0 6px 20px rgba(15,23,42,0.08);
+      --container:1200px;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:Inter, Manrope, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji", "Segoe UI Symbol";
+      line-height:1.6; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    }
+    img{max-width:100%; height:auto; display:block}
+    a{color:inherit; text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:var(--container); margin-inline:auto; padding-inline:16px}
+    .sr-only{position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      padding:.8rem 1.1rem; border-radius:12px; border:1px solid transparent;
+      font-weight:600; text-decoration:none; cursor:pointer; transition:.15s ease-in-out;
+      box-shadow:0 2px 10px rgba(15,23,42,.05);
+    }
+    .btn--primary{background:var(--accent); color:var(--text)} /* темний текст для AA+ */
+    .btn--outline{background:#fff; border-color:var(--border); color:var(--text)}
+    .btn--ghost{background:transparent; border-color:transparent; color:var(--text)}
+    .btn:hover{transform:translateY(-1px)}
+    .btn:active{transform:translateY(0)}
+    .btn:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
+    .badge{
+      display:inline-flex; align-items:center; gap:.4rem;
+      font-size:.85rem; font-weight:600; padding:.25rem .6rem; border-radius:999px;
+      background:var(--accent2); color:var(--text); border:1px solid rgba(0,0,0,.05);
+    }
+    header{
+      position:sticky; top:0; z-index:50; background:rgba(255,255,255,.85); backdrop-filter:saturate(180%) blur(8px);
+      border-bottom:1px solid var(--border);
+    }
+    .nav{display:flex; align-items:center; justify-content:space-between; padding:10px 0}
+    .brand{display:flex; align-items:center; gap:.6rem; font-weight:800; letter-spacing:.2px}
+    .brand__logo{
+      width:34px; height:34px; border-radius:9px; background:linear-gradient(145deg,var(--accent2),var(--accent));
+      display:grid; place-items:center; color:var(--text); font-weight:900;
+      box-shadow:var(--shadow);
+    }
+    .menu{display:flex; align-items:center; gap:14px}
+    .menu a{padding:.4rem .6rem; border-radius:8px}
+    .menu a:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
+    .burger{display:none; background:transparent; border:0; padding:.5rem; border-radius:10px}
+    .burger:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
+
+    @media (max-width: 840px){
+      .menu{display:none}
+      .burger{display:inline-flex}
+      .menu[data-open="true"]{
+        display:flex; position:absolute; top:60px; left:0; right:0; background:#fff; border-bottom:1px solid var(--border);
+        padding:12px 16px; flex-direction:column; gap:8px;
+      }
+    }
+
+    .hero{padding:56px 0 24px; background:linear-gradient(180deg,#fff, var(--surface))}
+    .hero__grid{display:grid; gap:24px; grid-template-columns:1.2fr 1fr}
+    .hero__title{font-size:clamp(28px,4.2vw,42px); line-height:1.15; margin:0 0 12px}
+    .hero__lead{color:var(--muted); margin:0 0 18px; font-size:1.1rem}
+    .hero__cta{display:flex; gap:10px; flex-wrap:wrap}
+    .hero__media{border:1px solid var(--border); border-radius:var(--radius); background:#fff; box-shadow:var(--shadow); overflow:hidden}
+    .placeholder{aspect-ratio:16/9; display:grid; place-items:center; color:var(--muted); font-weight:600}
+    .kpi{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px}
+    .kpi .pill{background:#fff; border:1px solid var(--border); padding:.3rem .6rem; border-radius:999px; display:inline-flex; align-items:center; gap:.4rem}
+
+    section{padding:48px 0}
+    .section__title{font-size:clamp(22px,3.5vw,32px); margin:0 0 10px}
+    .section__lead{margin:0 0 22px; color:var(--muted)}
+
+    .trust__grid{display:grid; grid-template-columns:repeat(12,1fr); gap:16px}
+    .trust__stats{grid-column:span 5; background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow)}
+    .trust__reviews{grid-column:span 7; display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+    .review{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow)}
+    .review strong{display:block; margin-bottom:4px}
+    @media (max-width: 900px){
+      .trust__stats{grid-column:1/-1}
+      .trust__reviews{grid-column:1/-1; grid-template-columns:1fr}
+    }
+
+    .steps{display:grid; grid-template-columns:repeat(4,1fr); gap:12px}
+    .step{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow)}
+    .step h3{margin:8px 0}
+    @media (max-width: 900px){ .steps{grid-template-columns:1fr 1fr} }
+    @media (max-width: 560px){ .steps{grid-template-columns:1fr} }
+
+    .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+    .card{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column}
+    .card .tags{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px}
+    .price{margin-top:auto}
+    .price s{color:var(--muted)}
+    .price b{font-size:1.25rem}
+    .card .actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+    @media (max-width: 960px){ .cards{grid-template-columns:1fr 1fr} }
+    @media (max-width: 560px){ .cards{grid-template-columns:1fr} }
+
+    .guide{background:linear-gradient(180deg,var(--surface),#fff); border-top:1px solid var(--border); border-bottom:1px solid var(--border)}
+    .guide form{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    input[type="email"]{
+      padding:.8rem 1rem; border-radius:12px; border:1px solid var(--border); min-width:260px;
+      font:inherit; outline:none; transition:.15s;
+    }
+    input[type="email"]:focus{border-color:var(--accent2); box-shadow:0 0 0 3px rgba(56,189,248,.25)}
+    .note{font-size:.9rem; color:var(--muted)}
+
+    details{background:#fff; border:1px solid var(--border); border-radius:12px; padding:12px 14px}
+    details+details{margin-top:10px}
+    summary{font-weight:600; cursor:pointer}
+    summary:focus-visible{outline:3px solid var(--ring); border-radius:8px}
+    details[open]{box-shadow:var(--shadow)}
+
+    .about{display:grid; grid-template-columns:auto 1fr; gap:16px; align-items:center}
+    .avatar{width:72px; height:72px; border-radius:50%; background:linear-gradient(145deg,var(--accent2),var(--accent)); display:grid; place-items:center; color:#0F172A; font-weight:800}
+    @media (max-width: 640px){ .about{grid-template-columns:1fr} }
+
+    footer{border-top:1px solid var(--border); background:#fff}
+    .footer__grid{display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; padding:24px 0}
+    .footlinks a{display:block; padding:.25rem 0}
+    @media (max-width: 780px){ .footer__grid{grid-template-columns:1fr} }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{transition:none!important; animation:none!important}
+    }
+  </style>
+
+  <!-- JSON-LD (RU) -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@graph":[
+      {
+        "@type":"Organization",
+        "name":"ШІ Для Чайників і не тільки",
+        "alternateName":"AI для чайников и не только",
+        "url":"https://example.com/",
+        "logo":"https://example.com/logo.png",
+        "sameAs":["https://t.me/ai_chaynyky"],
+        "description":"Обучаем ИИ простым языком: промпты, изображения, автоматизации без кода, таблицы + AI. Сообщество и поддержка."
+      },
+      {
+        "@type":"Course",
+        "name":"ІИ за 7 днів: з нуля до результату",
+        "alternateName":"ИИ за 7 дней: с нуля до результата",
+        "provider":{"@type":"Organization","name":"ШІ Для Чайників і не тільки"},
+        "inLanguage":"ru",
+        "description":"Быстрый старт в ИИ для новичков: базовые понятия, промпты и первый кейс.",
+        "hasCourseInstance":{
+          "@type":"CourseInstance",
+          "courseMode":"online",
+          "offers":{
+            "@type":"Offer",
+            "priceCurrency":"UAH",
+            "price":"799",
+            "availability":"https://schema.org/PreOrder",
+            "url":"https://example.com/course/ai-7-days"
+          }
+        }
+      },
+      {
+        "@type":"Course",
+        "name":"ChatGPT для роботи та навчання",
+        "alternateName":"ChatGPT для работы и учебы",
+        "provider":{"@type":"Organization","name":"ШІ Для Чайників і не тільки"},
+        "inLanguage":"ru",
+        "description":"Системный промптинг, шаблоны и сценарии для работы и учебы.",
+        "hasCourseInstance":{"@type":"CourseInstance","courseMode":"online","offers":{"@type":"Offer","priceCurrency":"UAH","price":"999","availability":"https://schema.org/PreOrder","url":"https://example.com/course/chatgpt"}} 
+      },
+      {
+        "@type":"Course",
+        "name":"Зображення з ІІ для SMM (Midjourney/SD)",
+        "alternateName":"Изображения с ИИ для SMM (Midjourney/SD)",
+        "provider":{"@type":"Organization","name":"ШІ Для Чайників і не тільки"},
+        "inLanguage":"ru",
+        "description":"Генерация серий визуалов для контент‑плана: стили, апскейл, экспорт.",
+        "hasCourseInstance":{"@type":"CourseInstance","courseMode":"online","offers":{"@type":"Offer","priceCurrency":"UAH","price":"1499","availability":"https://schema.org/PreOrder","url":"https://example.com/course/images-ai"}} 
+      },
+      {
+        "@type":"Course",
+        "name":"Автоматизації без коду (Make/Zapier)",
+        "alternateName":"Автоматизации без кода (Make/Zapier)",
+        "provider":{"@type":"Organization","name":"ШІ Для Чайників і не тільки"},
+        "inLanguage":"ru",
+        "description":"Интеграции и автопроцессы: триггеры, ветвления, вебхуки, отчёты.",
+        "hasCourseInstance":{"@type":"CourseInstance","courseMode":"online","offers":{"@type":"Offer","priceCurrency":"UAH","price":"1899","availability":"https://schema.org/PreOrder","url":"https://example.com/course/automation"}} 
+      },
+      {
+        "@type":"Course",
+        "name":"Таблиці + ІІ (Google Sheets + AI)",
+        "alternateName":"Таблицы + ИИ (Google Sheets + AI)",
+        "provider":{"@type":"Organization","name":"ШІ Для Чайників і не тільки"},
+        "inLanguage":"ru",
+        "description":"Формулы, очистка данных, мини‑дашборд и AI‑подсказки.",
+        "hasCourseInstance":{"@type":"CourseInstance","courseMode":"online","offers":{"@type":"Offer","priceCurrency":"UAH","price":"1399","availability":"https://schema.org/PreOrder","url":"https://example.com/course/sheets-ai"}} 
+      },
+      {
+        "@type":"Course",
+        "name":"Етика, безпека та ліміти ІІ",
+        "alternateName":"Этика, безопасность и лимиты ИИ",
+        "provider":{"@type":"Organization","name":"ШІ Для Чайників і не тільки"},
+        "inLanguage":"ru",
+        "description":"Чек‑листы рисков и правил: приватность, авторское право, верификация.",
+        "hasCourseInstance":{"@type":"CourseInstance","courseMode":"online","offers":{"@type":"Offer","priceCurrency":"UAH","price":"699","availability":"https://schema.org/PreOrder","url":"https://example.com/course/ethics"}} 
+      },
+      {
+        "@type":"Product",
+        "name":"Prompt‑пак «Контент‑помічник для SMM»",
+        "description":"Набор рабочих промптов для контент‑планов, сториз и постов.",
+        "sku":"PROMPT-SMM",
+        "offers":{"@type":"Offer","priceCurrency":"UAH","price":"199","availability":"https://schema.org/InStock","url":"https://example.com/product/prompt-smm"}
+      },
+      {
+        "@type":"Product",
+        "name":"Prompt‑пак «Офіс і навчання»",
+        "description":"Шаблоны промптов для задач офиса и обучения.",
+        "sku":"PROMPT-OFFICE",
+        "offers":{"@type":"Offer","priceCurrency":"UAH","price":"149","availability":"https://schema.org/InStock","url":"https://example.com/product/prompt-office"}
+      },
+      {
+        "@type":"Product",
+        "name":"Шаблон Notion «Контент‑план + Брифи»",
+        "description":"Готовый шаблон Notion для контент‑планування и брифов.",
+        "sku":"NOTION-CONTENT",
+        "offers":{"@type":"Offer","priceCurrency":"UAH","price":"249","availability":"https://schema.org/InStock","url":"https://example.com/product/notion-content"}
+      },
+      {
+        "@type":"Product",
+        "name":"Чек‑лист «100 ідей застосування ІІ»",
+        "description":"PDF со 100 идеями применения ИИ в учебе, работе и бизнесе.",
+        "sku":"CHECKLIST-100AI",
+        "offers":{"@type":"Offer","priceCurrency":"UAH","price":"99","availability":"https://schema.org/InStock","url":"https://example.com/product/checklist-100"}
+      },
+      {
+        "@type":"Product",
+        "name":"Пресети/макроси для CapCut/PS (набор)",
+        "description":"Подборка пресетов и макросов для ускорения монтажа и ретуши.",
+        "sku":"PRESET-CAPCUT-PS",
+        "offers":{"@type":"Offer","priceCurrency":"UAH","price":"299","availability":"https://schema.org/InStock","url":"https://example.com/product/presets"}
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <div class="container nav" role="navigation" aria-label="Головна навігація">
+      <a class="brand" href="#top" aria-label="На головну">
+        <div class="brand__logo" aria-hidden="true">ШІ</div>
+        <span>ШІ Для Чайників і не тільки</span>
+      </a>
+      <nav class="menu" id="menu" aria-label="Меню">
+        <a href="#courses">Курси</a>
+        <a href="#products">Продукти</a>
+        <a href="#guide">Безкоштовний гайд</a>
+        <a href="#faq">FAQ</a>
+        <a href="#about">Про проєкт</a>
+        <a class="btn btn--outline" href="https://t.me/ai_chaynyky" aria-label="Перейти в Telegram">Telegram</a>
+      </nav>
+      <button class="burger" id="burger" aria-label="Відкрити меню" aria-controls="menu" aria-expanded="false">
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero__grid">
+        <div>
+          <span class="badge" aria-label="Передпродаж зі знижкою">Передпродаж −50%</span>
+          <h1 class="hero__title">ШІ для навчання, роботи і бізнесу — просто і зрозуміло</h1>
+          <p class="hero__lead">За 7 днів від нуля до результату: промпти, зображення, автоматизації без коду, таблиці + AI.</p>
+          <div class="hero__cta">
+            <a class="btn btn--primary" href="#courses" aria-label="Купити курс зі знижкою">Купити курс</a>
+            <a class="btn btn--outline" href="https://t.me/ai_chaynyky" aria-label="Перейти в Telegram">Перейти в Telegram</a>
+          </div>
+          <div class="kpi">
+            <span class="pill" aria-label="Кількість підписників">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14z" fill="#38BDF8"/></svg>
+              <b>1000+</b> підписників
+            </span>
+            <span class="pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 4L10 14l-4-4-4 4" stroke="#22C55E" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+              Практика та підтримка
+            </span>
+          </div>
+        </div>
+        <div class="hero__media" role="img" aria-label="Ілюстрація: робоче місце зі ШІ">
+          <div class="placeholder">
+            <span>16:9 — зображення Hero (плейсхолдер)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust" aria-labelledby="trust-title">
+      <div class="container trust__grid">
+        <article class="trust__stats">
+          <h2 id="trust-title" class="section__title">Нам довіряють</h2>
+          <p class="section__lead">Приєднуйся до спільноти, де ШІ — інструмент, а не магія.</p>
+          <p><b>1000+ людей</b> у нашому Telegram‑каналі <svg width="18" height="18" viewBox="0 0 24 24" aria-label="Telegram" style="vertical-align:-4px"><path d="M9.5 15.5l-.3 4.2c.4 0 .6-.2.8-.4l1.9-1.8 4 2.9c.7.4 1.2.2 1.4-.7l2.6-12.1c.2-.9-.3-1.3-1-1.1L3.8 10.1c-1 .3-1 1 .2 1.3l4.1 1.3 9.6-6.1-8.2 8.9z" fill="#38BDF8"/></svg></p>
+          <p class="note">*Відгуки нижче — приклади макетів.</p>
+        </article>
+        <div class="trust__reviews">
+          <article class="review" aria-label="Відгук 1">
+            <strong>Оксана П. — студентка</strong>
+            <p>«Зрозуміло і по суті. Уже роблю задачі вдвічі швидше.»</p>
+          </article>
+          <article class="review" aria-label="Відгук 2">
+            <strong>Дмитро К. — підприємець</strong>
+            <p>«Автоматизації забрали рутину. +5 год на тиждень!»</p>
+          </article>
+          <article class="review" aria-label="Відгук 3">
+            <strong>Марія Л. — SMM</strong>
+            <p>«Нарешті системно: промпти, контент і таблиці разом.»</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="steps-title">
+      <div class="container">
+        <h2 id="steps-title" class="section__title">Як це працює</h2>
+        <p class="section__lead">4 кроки від знайомства до результату.</p>
+        <div class="steps">
+          <article class="step">
+            <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4z M4 20h16" stroke="#38BDF8" stroke-width="2" fill="none"/></svg>
+            <h3>1. Дивишся короткі уроки</h3>
+            <p>Без води, тільки те, що спрацює на практиці.</p>
+          </article>
+          <article class="step">
+            <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-7.8L2 9h7z" fill="#22C55E"/></svg>
+            <h3>2. Виконуєш практику</h3>
+            <p>Завдання в реальному робочому контексті.</p>
+          </article>
+          <article class="step">
+            <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h3l3 7 4-14 3 7h5" stroke="#0F172A" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            <h3>3. Автоматизуєш рутину</h3>
+            <p>Make/Zapier, Sheets + AI — без коду.</p>
+          </article>
+          <article class="step">
+            <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12a10 10 0 1020 0A10 10 0 002 12zm6 1l2 2 6-6" stroke="#22C55E" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            <h3>4. Отримуєш результат</h3>
+            <p>Готові кейси, шаблони і підтримка спільноти.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="courses" aria-labelledby="courses-title">
+      <div class="container">
+        <h2 id="courses-title" class="section__title">Курси</h2>
+        <p class="section__lead">Передпродаж зі знижками. Доступ одразу після оплати.</p>
+
+        <div class="cards">
+          <!-- 1 -->
+          <article class="card" aria-label="Курс: ІІ за 7 днів">
+            <div class="tags">
+              <span class="badge">Новинка</span>
+              <span class="badge">Передпродаж</span>
+            </div>
+            <h3>ІИ за 7 днів: з нуля до результату</h3>
+            <p>Старт для новачків: базові поняття, промпти, перший кейс. <b>7 уроків</b>.</p>
+            <div class="price">
+              <b>799 ₴</b> <s>1 599 ₴</s>
+            </div>
+            <div class="actions">
+              <a class="btn btn--primary" href="#" aria-label="Купити курс ІІ за 7 днів">Купити курс</a>
+              <a class="btn btn--outline" href="#" aria-label="Переглянути програму курсу">До програми</a>
+            </div>
+          </article>
+
+          <!-- 2 -->
+          <article class="card" aria-label="Курс: ChatGPT для роботи та навчання">
+            <div class="tags">
+              <span class="badge">Хіт</span>
+              <span class="badge">Передпродаж</span>
+            </div>
+            <h3>ChatGPT для роботи та навчання</h3>
+            <p>Система промптів і шаблони для щоденних задач. <b>8 уроків</b>.</p>
+            <div class="price">
+              <b>999 ₴</b> <s>1 999 ₴</s>
+            </div>
+            <div class="actions">
+              <a class="btn btn--primary" href="#" aria-label="Купити курс ChatGPT">Купити курс</a>
+              <a class="btn btn--outline" href="#" aria-label="Переглянути програму курсу">До програми</a>
+            </div>
+          </article>
+
+          <!-- 3 -->
+          <article class="card" aria-label="Курс: Зображення з ІІ для SMM">
+            <div class="tags">
+              <span class="badge">Хіт</span>
+              <span class="badge">Передпродаж</span>
+            </div>
+            <h3>Зображення з ІІ для SMM (Midjourney/SD)</h3>
+            <p>Серії візуалів під контент‑план. <b>10 уроків</b>.</p>
+            <div class="price">
+              <b>1 499 ₴</b> <s>2 499 ₴</s>
+            </div>
+            <div class="actions">
+              <a class="btn btn--primary" href="#" aria-label="Купити курс Зображення з ІІ">Купити курс</a>
+              <a class="btn btn--outline" href="#" aria-label="Переглянути програму курсу">До програми</a>
+            </div>
+          </article>
+
+          <!-- 4 -->
+          <article class="card" aria-label="Курс: Автоматизації без коду">
+            <div class="tags">
+              <span class="badge">Передпродаж</span>
+            </div>
+            <h3>Автоматизації без коду (Make/Zapier)</h3>
+            <p>Інтеграції та автопроцеси для бізнесу. <b>9 уроків</b>.</p>
+            <div class="price">
+              <b>1 899 ₴</b> <s>2 999 ₴</s>
+            </div>
+            <div class="actions">
+              <a class="btn btn--primary" href="#" aria-label="Купити курс Автоматизації без коду">Купити курс</a>
+              <a class="btn btn--outline" href="#" aria-label="Переглянути програму курсу">До програми</a>
+            </div>
+          </article>
+
+          <!-- 5 -->
+          <article class="card" aria-label="Курс: Таблиці + ІІ">
+            <div class="tags">
+              <span class="badge">Передпродаж</span>
+            </div>
+            <h3>Таблиці + ІІ (Google Sheets + AI)</h3>
+            <p>Формули, дані та AI‑підказки. <b>7 уроків</b>.</p>
+            <div class="price">
+              <b>1 399 ₴</b> <s>2 199 ₴</s>
+            </div>
+            <div class="actions">
+              <a class="btn btn--primary" href="#" aria-label="Купити курс Таблиці + ІІ">Купити курс</a>
+              <a class="btn btn--outline" href="#" aria-label="Переглянути програму курсу">До програми</a>
+            </div>
+          </article>
+
+          <!-- 6 -->
+          <article class="card" aria-label="Курс: Етика, безпека та ліміти ІІ">
+            <div class="tags">
+              <span class="badge">Новинка</span>
+              <span class="badge">Передпродаж</span>
+            </div>
+            <h3>Етика, безпека та ліміти ІІ</h3>
+            <p>Безпечні практики та чек‑листи. <b>5 уроків</b>.</p>
+            <div class="price">
+              <b>699 ₴</b> <s>1 199 ₴</s>
+            </div>
+            <div class="actions">
+              <a class="btn btn--primary" href="#" aria-label="Купити курс Етика та безпека ІІ">Купити курс</a>
+              <a class="btn btn--outline" href="#" aria-label="Переглянути програму курсу">До програми</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="products" aria-labelledby="products-title">
+      <div class="container">
+        <h2 id="products-title" class="section__title">Цифрові продукти</h2>
+        <p class="section__lead">Готові пакети промптів, шаблони та пресети.</p>
+        <div class="cards">
+          <article class="card" aria-label="Продукт: Prompt‑пак SMM">
+            <h3>Prompt‑пак «Контент‑помічник для SMM»</h3>
+            <p>Промпти для постів, сторіз і календаря.</p>
+            <div class="price"><b>199 ₴</b></div>
+            <div class="actions">
+              <button class="btn btn--primary" aria-label="Додати в кошик: Prompt‑пак SMM">У кошик</button>
+            </div>
+          </article>
+          <article class="card" aria-label="Продукт: Prompt‑пак Офіс">
+            <h3>Prompt‑пак «Офіс і навчання»</h3>
+            <p>Шаблони для конспектів, листів, звітів.</p>
+            <div class="price"><b>149 ₴</b></div>
+            <div class="actions">
+              <button class="btn btn--primary" aria-label="Додати в кошик: Prompt‑пак Офіс">У кошик</button>
+            </div>
+          </article>
+          <article class="card" aria-label="Продукт: Шаблон Notion">
+            <h3>Шаблон Notion «Контент‑план + Брифи»</h3>
+            <p>Організація контенту без хаосу.</p>
+            <div class="price"><b>249 ₴</b></div>
+            <div class="actions">
+              <button class="btn btn--primary" aria-label="Додати в кошик: Notion шаблон">У кошик</button>
+            </div>
+          </article>
+          <article class="card" aria-label="Продукт: Чек‑лист 100 ідей">
+            <h3>Чек‑лист «100 ідей застосування ІІ»</h3>
+            <p>Швидкі сценарії для щоденної роботи.</p>
+            <div class="price"><b>99 ₴</b></div>
+            <div class="actions">
+              <button class="btn btn--primary" aria-label="Додати в кошик: Чек‑лист 100 ідей">У кошик</button>
+            </div>
+          </article>
+          <article class="card" aria-label="Продукт: Пресети/макроси">
+            <h3>Пресети/макроси для CapCut/PS (набір)</h3>
+            <p>Швидший монтаж і ретуш без зайвого.</p>
+            <div class="price"><b>299 ₴</b></div>
+            <div class="actions">
+              <button class="btn btn--primary" aria-label="Додати в кошик: Пресети і макроси">У кошик</button>
+            </div>
+          </article>
+        </div>
+        <p class="note" style="margin-top:12px">
+          Способи оплати (макет): карта / Apple Pay / Google Pay / LiqPay / Mono.
+        </p>
+      </div>
+    </section>
+
+    <section id="guide" class="guide" aria-labelledby="guide-title">
+      <div class="container">
+        <h2 id="guide-title" class="section__title">Безкоштовний гайд</h2>
+        <p class="section__lead">Завантаж PDF «100 ідей застосування ШІ» — 1 лист, 100 сценаріїв.</p>
+        <form action="#" method="post" aria-describedby="policy-note" onsubmit="return false;">
+          <label for="email" class="sr-only">Email</label>
+          <input id="email" type="email" name="email" placeholder="ваш@email.ua" required inputmode="email" aria-required="true" />
+          <button class="btn btn--primary" aria-label="Отримати безкоштовний гайд">Отримати гайд</button>
+          <label style="display:flex; gap:.5rem; align-items:center">
+            <input type="checkbox" required aria-required="true" />
+            <span>Погоджуюсь з політикою конфіденційності</span>
+          </label>
+        </form>
+        <p class="note" id="policy-note">Ми не надсилаємо спам. Відписка у будь‑який момент.</p>
+      </div>
+    </section>
+
+    <section id="faq" aria-labelledby="faq-title">
+      <div class="container">
+        <h2 id="faq-title" class="section__title">Поширені запитання</h2>
+        <details>
+          <summary>Чи є сертифікат?</summary>
+          <p>Так, електронний після фінального завдання.</p>
+        </details>
+        <details>
+          <summary>Чи будуть записи?</summary>
+          <p>Так, доступ до записів на 6 місяців.</p>
+        </details>
+        <details>
+          <summary>Повернення коштів?</summary>
+          <p>14 днів після оплати, якщо курс не розпочато.</p>
+        </details>
+        <details>
+          <summary>Як працює підтримка?</summary>
+          <p>Telegram‑чат + email. Відповідаємо у робочий час.</p>
+        </details>
+        <details>
+          <summary>Чи підійде новачкам?</summary>
+          <p>Так. Є стартовий курс «ІІ за 7 днів».</p>
+        </details>
+        <details>
+          <summary>Які інструменти потрібні?</summary>
+          <p>LLM (ChatGPT або аналог), Google‑акаунт, Make/Zapier для автоматизацій.</p>
+        </details>
+        <details>
+          <summary>Які способи оплати?</summary>
+          <p>Карта / Apple Pay / Google Pay / LiqPay / Mono (макет, без інтеграції).</p>
+        </details>
+      </div>
+    </section>
+
+    <section id="about" aria-labelledby="about-title">
+      <div class="container">
+        <h2 id="about-title" class="section__title">Про проєкт</h2>
+        <div class="about">
+          <div class="avatar" aria-hidden="true">ШІ</div>
+          <div>
+            <p>Ми пояснюємо ШІ простою мовою і показуємо, як застосувати його у навчанні, роботі та бізнесі. Без гіпербол — тільки практика, кейси і підтримка спільноти.</p>
+            <p><a class="btn btn--outline" href="https://t.me/ai_chaynyky" aria-label="Перейти в Telegram">Перейти в Telegram</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer aria-labelledby="footer-title">
+    <div class="container">
+      <h2 id="footer-title" class="sr-only">Футер</h2>
+      <div class="footer__grid">
+        <div>
+          <div class="brand"><div class="brand__logo" aria-hidden="true">ШІ</div><span>ШІ Для Чайників і не тільки</span></div>
+          <p class="note">© <span id="year"></span> Усі права захищено.</p>
+          <p class="note">Email: <a href="mailto:hello@ai-chaynyky.ua">hello@ai-chaynyky.ua</a></p>
+        </div>
+        <div class="footlinks">
+          <strong>Документи</strong>
+          <a href="#">Публічна оферта</a>
+          <a href="#">Конфіденційність</a>
+          <a href="#">Cookies</a>
+        </div>
+        <div class="footlinks">
+          <strong>Соцмережі</strong>
+          <a href="https://t.me/ai_chaynyky">Telegram</a>
+          <a href="#">YouTube</a>
+          <a href="#">X (Twitter)</a>
+        </div>
+      </div>
+      <p class="note">Зроблено з любов’ю до простих рішень та чистого інтерфейсу.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Burger menu (accessibility)
+    const burger = document.getElementById('burger');
+    const menu = document.getElementById('menu');
+    burger?.addEventListener('click', () => {
+      const open = menu.getAttribute('data-open') === 'true';
+      menu.setAttribute('data-open', String(!open));
+      burger.setAttribute('aria-expanded', String(!open));
+    });
+    // Year
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
